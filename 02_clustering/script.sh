@@ -10,5 +10,10 @@
 
 conda activate /rhome/msaee007/bigdata/conda_packages
 
+# python pointnet_segmentation.py
 # python pointnet_segmentation2.py
-python pointnet_hybrid_segmentation.py
+# python unet_segmentation.py
+# python unet_segmentation2.py
+python results_summary_pn.py
+python results_summary_un.py
+python results_summary_un2.py

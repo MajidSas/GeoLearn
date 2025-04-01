@@ -18,7 +18,7 @@ from transformers import ResNetConfig, ResNetModel
 from torch_geometric.nn import MLP
 import time
 
-output_folder = '/rhome/msaee007/bigdata/pointnet_data/synthetic_data/main_exp_outputs'
+output_folder = '/rhome/msaee007/bigdata/pointnet_data/selectivity_exp_output'
 device = torch.device('cuda')
 max_epochs = 150
 batch_size=32

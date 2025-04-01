@@ -16,6 +16,11 @@ from itertools import product
 import binpacking
 from torch_geometric.data import Batch
 from torch.utils.data.dataloader import default_collate
+import sys
+
+data_collection = sys.argv[1]
+selected_model = sys.argv[2]
+
 from tqdm import tqdm
 # ground truth time
 def read_labels(path, dist, selected_samples):
@@ -74,9 +79,12 @@ with open(base_folder + '/label_stats.json', 'r') as file:
 
 device = 'cuda'
 
-selected_model = 'pointnet'
 results_file = base_folder+'/%s_results_summary.csv' % selected_model
 time_file = base_folder+'/%s_time_summary.csv' % selected_model
+if 'weather' in data_collection:
+    results_file = base_folder+'/%s_weather_results_summary.csv' % selected_model
+    time_file = base_folder+'/%s_weather_time_summary.csv' % selected_model
+    
 model = None
 if selected_model == 'pointnet':
     base_parameters = {
@@ -91,9 +99,10 @@ if selected_model == 'pointnet':
     base_parameters['set_abstractions'][0]['mlp'][0] = 2 + 3
     base_parameters['final_mlp'][-1] = len(outputs)
     model = PointNet(**base_parameters)
-    # model.load_state_dict(torch.load(base_folder + '/main_exp_outputs/all_values_parametrized_synth_0.013106.ckpt', weights_only=True))
-    model.load_state_dict(torch.load(base_folder + '/main_exp_outputs/all_values_parametrized_synth_0.014111.ckpt', weights_only=True))
-    # model.load_state_dict(torch.load(base_folder + '/main_exp_outputs/all_values_parametrized_weather_0.207067.ckpt', weights_only=True))
+    if 'weather' in data_collection:
+        model.load_state_dict(torch.load(base_folder + '/main_exp_outputs/all_values_parametrized_weather_0.212609.ckpt', weights_only=True))
+    else:
+        model.load_state_dict(torch.load(base_folder + '/main_exp_outputs/all_values_parametrized_synth_0.014546.ckpt', weights_only=True))
     model = model.to(device)
     model.eval()
 else:
@@ -118,8 +127,10 @@ else:
             output = self.fc(combined_features)
             return output
     model = ResNet(len(outputs), 2).to(device)
-    model.load_state_dict(torch.load(base_folder + '/main_exp_outputs/resnet_baseline_synth_0.054580.ckpt', weights_only=True))
-    # model.load_state_dict(torch.load(base_folder + '/main_exp_outputs/resnet_baseline_weather_0.252638.ckpt', weights_only=True))
+    if 'weather' in data_collection:
+        model.load_state_dict(torch.load(base_folder + '/main_exp_outputs/resnet_weather_0.259091.ckpt', weights_only=True))
+    else:
+        model.load_state_dict(torch.load(base_folder + '/main_exp_outputs/resnet_synth_0.055634.ckpt', weights_only=True))
     model = model.to(device)
     model.eval()
 
@@ -155,6 +166,9 @@ results_table = defaultdict(list)
 time_table = defaultdict(list)
 parameters_comb = list(zip(['16','32','64', '16'], ['0.025','0.05','0.1','0.25']))
 
+start_event = torch.cuda.Event(enable_timing=True)
+end_event = torch.cuda.Event(enable_timing=True)
+pred_time = 0.0
 for d in labels:
     # if 'weather' not in d:
     #     continue
@@ -254,19 +268,39 @@ for d in labels:
             batch_data, sample_indexes = batches[batch_idx]
             batch_data = batch_data.to(device)
             with torch.no_grad():
-                t1 = time.time()
+                torch.cuda.synchronize()
+                start_event.record()
                 prediction = model(batch_data)
-                t1 = time.time()-t1
-                dist_time += t1
+                end_event.record()
+                torch.cuda.synchronize()
+                pred_time = start_event.elapsed_time(end_event)/1000
+            if batch_idx == 0: # run it again the first time only
+                with torch.no_grad():
+                    start_event.record()
+                    prediction = model(batch_data)
+                    end_event.record()
+                    torch.cuda.synchronize()
+                    pred_time = start_event.elapsed_time(end_event)/1000
+            dist_time += pred_time
             predictions = prediction.cpu().tolist()
         else:
             histograms, params, sample_indexes = batches[batch_idx]
             histograms, params = histograms.to(device), params.to(device)
             with torch.no_grad():
-                t1 = time.time()
+                torch.cuda.synchronize()
+                start_event.record()
                 prediction = model(histograms, params)
-                t1 = time.time()-t1
-                dist_time += t1
+                end_event.record()
+                torch.cuda.synchronize()
+                pred_time = start_event.elapsed_time(end_event)/1000
+            if batch_idx == 0: # run it again the first time only
+                with torch.no_grad():
+                    start_event.record()
+                    prediction = model(histograms, params)
+                    end_event.record()
+                    torch.cuda.synchronize()
+                    pred_time = start_event.elapsed_time(end_event)/1000
+            dist_time += pred_time
             predictions = prediction.cpu().tolist()
 
         for i in range(len(sample_indexes)):
@@ -281,38 +315,12 @@ for d in labels:
             _results_table['k_values'][j] = predictions[i][6]
             _results_table['box_counts_e0'][j] = predictions[i][7]
             _results_table['box_counts_e2'][j] = predictions[i][8]
-            _results_table['time'][sample_indexes[i]] = t1/len(sample_indexes)
+            _results_table['time'][sample_indexes[i]] = pred_time/len(sample_indexes)
     for k in _results_table:
         results_table[k] += _results_table[k]
     time_table['time'].append(dist_time)      
 
 
 
-# pd.DataFrame(results_table).to_csv(results_file,index=False)
+pd.DataFrame(results_table).to_csv(results_file,index=False)
 pd.DataFrame(time_table).to_csv(time_file)
-
-
-
-
-# batch_sizes = [18, 22, 24, 28]
-# for b in batch_sizes:
-#     batch_data = Batch.from_data_list(data_list[-1*b:]).to(device)
-#     with torch.no_grad():
-#         t1 = time.time()
-#         prediction = model(batch_data)
-#         t1 = time.time()-t1
-#     print(b, t1)
-#     torch.cuda.empty_cache()
-# # test on uniform_large data only
-# # batch     time
-# # 1       20.
-# # 2       20.
-# # 4       20.
-# # 8       20.
-# # 16      21.
-# # 18      23.
-# # 22      25.
-# # 24      28.
-# # 28      34.
-# # 32      42.
-# # 64      Failed

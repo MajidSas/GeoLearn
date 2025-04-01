@@ -155,13 +155,12 @@ def custom_collate_fn(batch):
 
 # load models
 
-pointnet_not_param_path = '/rhome/msaee007/bigdata/pointnet_data/outputs/dbscan_global_0.920392.ckpt'
-pointnet_param_path = '/rhome/msaee007/bigdata/pointnet_data/outputs/pointnet_segmentation_parametrized_0.572517.ckpt'
-unet_not_param_path = '/rhome/msaee007/bigdata/pointnet_data/outputs/unet_global_0.795797.ckpt'
-unet_param_path = '/rhome/msaee007/bigdata/pointnet_data/outputs/unet_global_0.592444.ckpt'
+pointnet_not_param_path = '/rhome/msaee007/bigdata/pointnet_data/outputs/dbscan_global_0.889036.ckpt'
+pointnet_param_path = '/rhome/msaee007/bigdata/pointnet_data/outputs/pointnet_segmentation_parametrized_0.557927.ckpt'
+unet_not_param_path = '/rhome/msaee007/bigdata/pointnet_data/outputs/unet_global_0.856794.ckpt'
+unet_param_path = '/rhome/msaee007/bigdata/pointnet_data/outputs/unet_global_0.580316.ckpt'
 
-results_folder = '/rhome/msaee007/PointNet/02_density/clustering_results'
-
+results_folder = '/rhome/msaee007/PointNet/02_clustering/clustering_results'
 
 batch_size = 32
 val_loader = DataLoader(SpatialDatasetSeg(years=val_years), batch_size=batch_size, shuffle=False, collate_fn=custom_collate_fn)

@@ -23,6 +23,8 @@ import matplotlib.pyplot as plt
 from torch.utils.data.dataloader import default_collate
 from torchvision.transforms.functional import to_pil_image
 import matplotlib.pyplot as plt
+from collections import defaultdict
+from collections import Counter
 
 with open('./config_general.json') as f:
     config = json.load(f)
@@ -98,10 +100,11 @@ class SpatialDatasetSeg(Dataset):
         # input histogram
         input_histogram = np.zeros((3, histogram_size, histogram_size))
         output_histogram = np.zeros((3, histogram_size, histogram_size))
-        output_histogram_count = np.zeros((histogram_size, histogram_size))
+        # output_histogram_count = np.zeros((histogram_size, histogram_size))
 
         x_bin_indices = np.digitize(points[:, 0], x_edges) - 1
         y_bin_indices = np.digitize(points[:, 1], y_edges) - 1
+        output_histogram_labels = defaultdict(list)
         for i in range(points.shape[0]):
             x_bin = x_bin_indices[i]
             y_bin = y_bin_indices[i]
@@ -109,14 +112,16 @@ class SpatialDatasetSeg(Dataset):
                 input_histogram[0, x_bin, y_bin] = min(x[i, 0], input_histogram[0, x_bin, y_bin])
                 input_histogram[1, x_bin, y_bin] = max(x[i, 0], input_histogram[1, x_bin, y_bin])
                 input_histogram[2, x_bin, y_bin] += 1
-                output_histogram[0, x_bin, y_bin] += label_colors[labels[i], 0]
-                output_histogram[1, x_bin, y_bin] += label_colors[labels[i], 1]
-                output_histogram[2, x_bin, y_bin] += label_colors[labels[i], 2]
-                output_histogram_count[x_bin, y_bin] += 1
+                output_histogram_labels[(x_bin,y_bin)].append(labels[i])
         input_histogram[2, :, :] = input_histogram[2, :, :] / x.shape[0]
-        output_histogram[0] = np.divide(output_histogram[0], output_histogram_count, where=output_histogram_count!=0)
-        output_histogram[1] = np.divide(output_histogram[1], output_histogram_count, where=output_histogram_count!=0)
-        output_histogram[2] = np.divide(output_histogram[2], output_histogram_count, where=output_histogram_count!=0)
+        for (x_bin, y_bin) in output_histogram_labels:
+            most_common = Counter(output_histogram_labels[(x_bin,y_bin)]).most_common(1)[0][0]
+            output_histogram[0, x_bin, y_bin] += label_colors[most_common, 0]
+            output_histogram[1, x_bin, y_bin] += label_colors[most_common, 1]
+            output_histogram[2, x_bin, y_bin] += label_colors[most_common, 2]
+        # output_histogram[0] = np.divide(output_histogram[0], output_histogram_count, where=output_histogram_count!=0)
+        # output_histogram[1] = np.divide(output_histogram[1], output_histogram_count, where=output_histogram_count!=0)
+        # output_histogram[2] = np.divide(output_histogram[2], output_histogram_count, where=output_histogram_count!=0)
         batch = np.zeros((points.shape[0], 1))
         batch[:, 0] = idx
         data = (torch.from_numpy(input_histogram).to(torch.float32),

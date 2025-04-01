@@ -220,17 +220,13 @@ class PointNetRoadPOI(torch.nn.Module):
         super().__init__()
 
         # Input channels account for both `pos` and node features.
-        self.sa1_poi_from_road = SetAbstractionPair( # get features for pois from roads
+        self.sa1_poi_only = SetAbstraction( # get features for pois from roads
+            0.1,
             2.0,
-            16,
-            MLP([12, 32, 64, 64, 128]) # 8 = (2 dimensions for the points) + (6 dimensions for the features)
+            128,
+            MLP([12, 64, 64, 64, 64]) # 8 = (2 dimensions for the points) + (6 dimensions for the features)
         ) # roads are the references sets, and we compute features for pois
 
-        self.sa1_road_from_poi = SetAbstractionPair( # get features for roads from pois
-            2.0,
-            16,
-            MLP([12, 32, 64, 64, 128]) # 12 = (2 dimensions for the points) + (10 dimensions for the features)
-        ) # sa1_poi_road is the reference set, and we compute features for road points
 
         # self.sa2_road_from_poi = SetAbstractionPair( # get features for roads from pois
         #     0.75,
@@ -240,18 +236,24 @@ class PointNetRoadPOI(torch.nn.Module):
 
 
         self.sa2_poi_only = SetAbstraction(
-            0.75,
+            1.0,
             2.0,
-            4,
-            MLP([128 + 2, 256, 256, 512])
+            128,
+            MLP([64 + 2, 128, 128, 128, 128])
         )
 
-        self.sa2_road_only = SetAbstraction(
-            0.75,
+        # self.sa3_road_from_poi = SetAbstraction(
+        #     0.75,
+        #     2.0,
+        #     4,
+        #     MLP([128 + 2, 256, 256, 512])
+        # )
+        self.sa3_road_from_poi = SetAbstractionPair( # get features for roads from pois
             2.0,
-            4,
-            MLP([128 + 2, 256, 256, 512])
-        )
+            16,
+            MLP([2 + 128, 256, 256, 256, 256]) # 12 = (2 dimensions for the points) + (10 dimensions for the features)
+        ) # sa1_poi_road is the reference set, and we compute features for road points
+
 
         # self.sa3_poi_only = SetAbstraction(
         #     0.5,
@@ -266,28 +268,24 @@ class PointNetRoadPOI(torch.nn.Module):
         #     4,
         #     MLP([512 + 2, 1024, 1024, 2048])
         # )
-        self.global_abstraction_poi = GlobalSetAbstraction(MLP([512 + 2, 1024, 1024])) # 1024 dimensions for the features + 2 dimensions for the points
-        self.global_abstraction_road = GlobalSetAbstraction(MLP([512 + 2, 1024, 1024])) # 1024 dimensions for the features + 2 dimensions for the points
-        # self.global_abstraction = GlobalSetAbstraction(MLP([256 + 2, 512, 1024])) # 1024 dimensions for the features + 2 dimensions for the points
+        # self.global_abstraction_poi = GlobalSetAbstraction(MLP([512 + 2, 1024, 1024])) # 1024 dimensions for the features + 2 dimensions for the points
+        # self.global_abstraction_road = GlobalSetAbstraction(MLP([512 + 2, 1024, 1024])) # 1024 dimensions for the features + 2 dimensions for the points
+        self.global_abstraction = GlobalSetAbstraction(MLP([256 + 2, 512, 512, 512, 1024])) # 1024 dimensions for the features + 2 dimensions for the points
 
         # self.fp3_module = FeaturePropagation(1, MLP([1024 + 256, 256, 256]))
         # self.fp2_module = FeaturePropagation(3, MLP([256 + 128, 256, 128]))
         # self.fp1_module = FeaturePropagation(3, MLP([128 + 6, 128, 128, 128]))
 
 
-        self.mlp = MLP([2048, 1024, 512, 256, 128, 1], dropout=dropout, norm="batch_norm") #
+        self.mlp = MLP([1024, 1024, 512, 256, 128, 1], dropout=dropout, norm="batch_norm") #
 
     def forward(self, road_data, poi_data):
-        sa0_road = (road_data.x, road_data.pos, road_data.batch)
+        sa0_road = (torch.zeros((road_data.pos.shape[0], 128)), road_data.pos, road_data.batch)
         sa0_poi = (poi_data.x, poi_data.pos, poi_data.batch)
         # sa1_road = self.sa1_road_poi(*sa0_road, *sa0_poi)
-        sa1_poi = self.sa1_poi_from_road(*sa0_poi, *sa0_road)
+        sa1_poi = self.sa1_poi_only(*sa0_poi)
         sa2_poi = self.sa2_poi_only(*sa1_poi)
-        x_poi, _, _ = self.global_abstraction_poi(*sa2_poi)
-
-        sa1_road = self.sa1_road_from_poi(*sa0_road, *sa0_poi)
-        sa2_road = self.sa2_road_only(*sa1_road)
-        x_road, _, _ = self.global_abstraction_road(*sa2_road)
+        sa3_road = self.sa3_road_from_poi(*sa0_road, *sa2_poi)
 
         # sa2_poi = self.road_only(*sa1_poi)
         ###
@@ -301,8 +299,8 @@ class PointNetRoadPOI(torch.nn.Module):
         # sa3_road = self.sa3_road_only(*sa2_road)
         # sa3_road = self.sa3_road_poi(*sa2_road, *sa0_poi)
         # sa3_road = self.sa3_road_only(*sa2_road)
-        # x, _, _ = self.global_abstraction(*sa3_poi)
-        x = torch.cat((x_poi, x_road), dim=1)
+        x, _, _ = self.global_abstraction(*sa3_road)
+        # x = torch.cat((x_poi, x_road), dim=1)
         # sa1_poi = self.sa1_poi_road(*sa0_poi, *sa0_road)
         # sa2_road = self.sa2_road_poi(*sa1_road, *sa1_poi)
         # sa3_road = self.sa3_module(*sa2_road)
@@ -330,59 +328,59 @@ device = (torch.device(config['device']))
 # max_nodes = 192000
 train_dataset = SpatialDatasetSeg(pd.read_csv('/rhome/msaee007/bigdata/pointnet_data/walkability_data/train_summary.csv'))
 
-# node_sizes = {}
-# for i in range(len(train_dataset)):
-#     node_sizes[i] = train_dataset[i][0].pos.shape[0]
-# import binpacking
-# batch_indexes = binpacking.to_constant_volume(node_sizes,max_nodes)
-# batch_indexes = np.arange(len(train_dataset))
-# np.random.shuffle(batch_indexes)
-# batch_size = 32
-# r = len(batch_indexes) % batch_size
-# remainder = batch_indexes[len(batch_indexes)-r:].tolist()
-# batch_indexes = batch_indexes[:len(batch_indexes)-r].reshape(((len(batch_indexes)-r)//batch_size,batch_size)).tolist()
-# if len(remainder):
-#     batch_indexes.append(remainder)
+node_sizes = {}
+for i in range(len(train_dataset)):
+    node_sizes[i] = train_dataset[i][0].pos.shape[0]
+import binpacking
+batch_indexes = binpacking.to_constant_volume(node_sizes,max_nodes)
+batch_indexes = np.arange(len(train_dataset))
+np.random.shuffle(batch_indexes)
+batch_size = 32
+r = len(batch_indexes) % batch_size
+remainder = batch_indexes[len(batch_indexes)-r:].tolist()
+batch_indexes = batch_indexes[:len(batch_indexes)-r].reshape(((len(batch_indexes)-r)//batch_size,batch_size)).tolist()
+if len(remainder):
+    batch_indexes.append(remainder)
 
-# train_batches = []
-# for batch_idx in range(len(batch_indexes)):
-#     sample_indexes = batch_indexes[batch_idx]
-#     batch_road_data = []
-#     batch_poi_data = []
-#     for i in sample_indexes:
-#         road_data, poi_data, _ = train_dataset[i]
-#         batch_road_data.append(road_data)
-#         batch_poi_data.append(poi_data)
-#     # batch_data = [train_dataset[i] for i in sample_indexes]
-#     road_data = Batch.from_data_list(batch_road_data)
-#     poi_data = Batch.from_data_list(batch_poi_data)
-#     train_batches.append((road_data, poi_data))
+train_batches = []
+for batch_idx in range(len(batch_indexes)):
+    sample_indexes = batch_indexes[batch_idx]
+    batch_road_data = []
+    batch_poi_data = []
+    for i in sample_indexes:
+        road_data, poi_data, _ = train_dataset[i]
+        batch_road_data.append(road_data)
+        batch_poi_data.append(poi_data)
+    # batch_data = [train_dataset[i] for i in sample_indexes]
+    road_data = Batch.from_data_list(batch_road_data)
+    poi_data = Batch.from_data_list(batch_poi_data)
+    train_batches.append((road_data, poi_data))
 
 
-# val_dataset = SpatialDatasetSeg(pd.read_csv('/rhome/msaee007/bigdata/pointnet_data/walkability_data/test_summary.csv'))
-# batch_indexes2 = np.arange(len(val_dataset))
-# np.random.shuffle(batch_indexes2)
-# r = len(batch_indexes2) % batch_size
-# remainder = batch_indexes2[len(batch_indexes2)-r:].tolist()
-# batch_indexes2 = batch_indexes2[:len(batch_indexes2)-r].reshape(((len(batch_indexes2)-r)//batch_size,batch_size)).tolist()
-# if len(remainder):
-#     batch_indexes2.append(remainder)
+val_dataset = SpatialDatasetSeg(pd.read_csv('/rhome/msaee007/bigdata/pointnet_data/walkability_data/test_summary.csv'))
+batch_indexes2 = np.arange(len(val_dataset))
+np.random.shuffle(batch_indexes2)
+r = len(batch_indexes2) % batch_size
+remainder = batch_indexes2[len(batch_indexes2)-r:].tolist()
+batch_indexes2 = batch_indexes2[:len(batch_indexes2)-r].reshape(((len(batch_indexes2)-r)//batch_size,batch_size)).tolist()
+if len(remainder):
+    batch_indexes2.append(remainder)
 
-# val_batches = []
-# for batch_idx in range(len(batch_indexes2)):
-#     sample_indexes = batch_indexes2[batch_idx]
-#     batch_road_data = []
-#     batch_poi_data = []
-#     labels = []
-#     for i in sample_indexes:
-#         road_data, poi_data, label = val_dataset[i]
-#         batch_road_data.append(road_data)
-#         batch_poi_data.append(poi_data)
-#         labels.append(label)
-#     # batch_data = [train_dataset[i] for i in sample_indexes]
-#     road_data = Batch.from_data_list(batch_road_data)
-#     poi_data = Batch.from_data_list(batch_poi_data)
-#     val_batches.append((road_data, poi_data, labels))
+val_batches = []
+for batch_idx in range(len(batch_indexes2)):
+    sample_indexes = batch_indexes2[batch_idx]
+    batch_road_data = []
+    batch_poi_data = []
+    labels = []
+    for i in sample_indexes:
+        road_data, poi_data, label = val_dataset[i]
+        batch_road_data.append(road_data)
+        batch_poi_data.append(poi_data)
+        labels.append(label)
+    # batch_data = [train_dataset[i] for i in sample_indexes]
+    road_data = Batch.from_data_list(batch_road_data)
+    poi_data = Batch.from_data_list(batch_poi_data)
+    val_batches.append((road_data, poi_data, labels))
 
 # node_sizes = {}
 # for i in range(len(val_dataset)):

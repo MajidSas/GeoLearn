@@ -11,5 +11,5 @@
 conda activate /rhome/msaee007/bigdata/conda_packages
 
 # python resnet_baseline.py
-# python pointnet_exp.py
-python pointnet_hybrid.py
+python pointnet_exp.py
+# python pointnet_hybrid.py

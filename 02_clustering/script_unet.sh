@@ -11,3 +11,4 @@
 conda activate /rhome/msaee007/bigdata/conda_packages
 
 python unet_segmentation2.py
+python unet_segmentation.py

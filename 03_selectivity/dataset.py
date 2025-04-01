@@ -24,10 +24,10 @@ class SpatialDataset(Dataset):
         super().__init__()
         self.cache = {}
         self.histogram = histogram
-        range_queries = pd.read_csv('/rhome/msaee007/PointNet/sj_histograms/rangeQueries/rq_small.csv')
+        range_queries = pd.read_csv('/rhome/msaee007/PointNet/other_files/sj_histograms/rangeQueries/rq_small.csv')
         range_queries = range_queries[~range_queries['datasetName'].str.contains('gaussian_020')] # becaues this doesn't have histogram available in the source
 
-        labels = pd.read_csv('/rhome/msaee007/PointNet/sj_histograms/rangeQuerResults/result_small.csv',sep=';')
+        labels = pd.read_csv('/rhome/msaee007/PointNet/other_files/sj_histograms/rangeQuerResults/result_small.csv',sep=';')
         labels = labels[~labels['dataset_numQuery_areaInt'].str.contains('gaussian_020')]
 
         self.range_queries = range_queries.drop(range_queries.index[::5])

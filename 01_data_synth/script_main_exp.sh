@@ -11,10 +11,12 @@
 conda activate /rhome/msaee007/bigdata/conda_packages
 export PATH=/rhome/msaee007/bigdata/conda_packages/bin/:$PATH
 
-# python resnet_baseline.exp
-# python pointnet_main_exp.py
-# label: all_values_parametrized_real_data_rotated (this is the synth data based one: no rotation and not augmentation)
-# all_values_parametrized_weather (this is based on weather data)
-python p1_pred_summary.py
+# python resnet_train.exp synth
+# python resnet_train.exp weather
+# python pointnet_train.py
+python p1_pred_summary.py synth pointnet
+python p1_pred_summary.py synth resnet
+# python p1_pred_summary.py weather pointnet
+# python p1_pred_summary.py weather resnet
 # python scalability_test.py
-# python pointnet_hybrid_exp.py
+python p1_tables.py

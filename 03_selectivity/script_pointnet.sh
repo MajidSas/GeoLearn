@@ -11,6 +11,6 @@
 conda activate /rhome/msaee007/bigdata/conda_packages
 export PATH=/rhome/msaee007/bigdata/conda_packages/bin/:$PATH
 
-# python resnet_baseline.py
-# python pointnet_main_exp.py
-python pointnet_hybrid_exp.py
+python resnet_baseline.py
+python pointnet_main_exp.py
+# python pointnet_hybrid_exp.py

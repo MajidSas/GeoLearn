@@ -10,4 +10,5 @@
 
 conda activate /rhome/msaee007/bigdata/conda_packages
 
-python resnet_baseline.py
+python resnet_baseline.py synth
+python resnet_baseline.py weather

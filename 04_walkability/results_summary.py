@@ -1,8 +1,8 @@
 import pandas as pd
 import numpy as np
 
-p = pd.read_csv('/rhome/msaee007/bigdata/pointnet_data/outputs/walkability_pointnet_0.157757.csv')
-r = pd.read_csv('/rhome/msaee007/bigdata/pointnet_data/outputs/walkability_resnet_0.078716.csv')
+p = pd.read_csv('/rhome/msaee007/bigdata/pointnet_data/outputs/walkability_pointnet_0.148570.csv')
+r = pd.read_csv('/rhome/msaee007/bigdata/pointnet_data/outputs/walkability_resnet_0.082551.csv')
 p['predicted'] = p['predicted'].clip(lower=0).clip(upper=1.0)
 r['predicted'] = r['predicted'].clip(lower=0).clip(upper=1.0)
 p['Label'] = p['partition_label'].map(lambda x: x[:x.find('_')])

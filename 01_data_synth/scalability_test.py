@@ -20,7 +20,9 @@ from tqdm import tqdm
 
 # Function to measure memory usage (obtained using ChatGPT)
 def measure_memory_usage(model, input_tensor, mode="train"):
-    t1 = 0
+    start_event = torch.cuda.Event(enable_timing=True)
+    end_event = torch.cuda.Event(enable_timing=True)
+    pred_time = 0.0
     # Reset memory stats
     torch.cuda.reset_peak_memory_stats()
     if mode == "train":
@@ -31,12 +33,15 @@ def measure_memory_usage(model, input_tensor, mode="train"):
         torch.cuda.synchronize()
     # Run forward pass
     with torch.set_grad_enabled(mode == "train"):
-        t1 = time.time()
+        torch.cuda.synchronize()
+        start_event.record()
         output = model(input_tensor)
-        t1 = time.time()-t1
+        end_event.record()
+        torch.cuda.synchronize()
+        pred_time = start_event.elapsed_time(end_event)
     # Get max memory allocated
     max_memory = torch.cuda.max_memory_allocated(device) / (1024 ** 2)  # Convert to MB
-    return max_memory, t1
+    return max_memory, pred_time
 
 
 
@@ -157,25 +162,29 @@ input_sizes = []
 train_memory = []
 infe_memory = []
 # n_edges = []
+complete = 0
 for batch_idx in progress_bar:
     batch_data = Batch.from_data_list(data_lists[batch_idx]).to(device)
     if batch_idx == 0:
         # warmup step
         prediction = model(batch_data)
-    try:
         with torch.no_grad():
-            _train_memory, train_time = measure_memory_usage(model, batch_data, mode="train")
-            _infe_memory, infe_time = measure_memory_usage(model, batch_data, mode="inference")
+            if complete == 0:
+                try:
+                    _train_memory, train_time = measure_memory_usage(model, batch_data, mode="train")
+                except:
+                    _train_memory, train_time = -1, -1
+                    complete += 1
+            else:
+                _train_memory, train_time = (-1, -1)
+            try:
+                _infe_memory, infe_time = measure_memory_usage(model, batch_data, mode="inference")
+            except:
+                break
             batch_times.append(infe_time)
             train_memory.append(_train_memory)
             infe_memory.append(_infe_memory)
             input_sizes.append(batch_data.pos.shape[0])
             print(input_sizes[-1], train_memory[-1], infe_memory[-1], batch_times[-1])
-    except:
-        batch_times.append(-1)
-        train_memory.append(-1)
-        infe_memory.append(-1)
-        input_sizes.append(batch_data.pos.shape[0])
-        break
 
 pd.DataFrame({'input_size': input_sizes, 'prediction_time': batch_times, 'inference_max_memory': infe_memory, 'train_max_memory': train_memory}).to_csv('/rhome/msaee007/PointNet/01_data_synth/results_csv_summary/scalability.csv', index=False)
