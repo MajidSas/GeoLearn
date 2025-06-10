@@ -61,6 +61,53 @@ This should produce all the results and tables shown in the paper.
 
 ## Clustering Experiments
 
+In the files `pointnet_segmentation.py`, `pointnet_segmentation2.py`, `unet_segmentation.py`, `unet_segmentation2.py`, replace `/rhome/msaee007/bigdata/pointnet_data/weather_data` to whereever you stored the weather dataset. In the file `config_general.json` replace the value of `output_folder` to where you want to store the model weights. Similarly, change any appearance of this path in any other file. You can use any editor tool to change this path in all files in the project.
+
+To train the pointnet and unet models, you can use these commands:
+```bash
+python pointnet_segmentation.py
+python pointnet_segmentation2.py
+python unet_segmentation.py
+python unet_segmentation2.py
+```
+
+In the files `results_summary_pn.py`, `results_summary_un.py`, and `results_summary_un2.py`, replace the following paths, with where your trained models are stored, in the output folder you specified, and where you want the summary results to be stored:
+```python
+pointnet_not_param_path = '/rhome/msaee007/bigdata/pointnet_data/outputs/dbscan_global_0.889036.ckpt'
+pointnet_param_path = '/rhome/msaee007/bigdata/pointnet_data/outputs/pointnet_segmentation_parametrized_0.557927.ckpt'
+unet_not_param_path = '/rhome/msaee007/bigdata/pointnet_data/outputs/unet_global_0.856794.ckpt'
+unet_param_path = '/rhome/msaee007/bigdata/pointnet_data/outputs/unet_global_0.580316.ckpt'
+
+results_folder = '/rhome/msaee007/PointNet/02_clustering/clustering_results'
+```
+
+Then, you can get the summary results with:
+```
+python results_summary_pn.py
+python results_summary_un.py
+python results_summary_un2.py
+```
+
+Similarly, in the folder `poly2vec_transformer`, chagne the output folders and the paths to the stored models, in the files that start with `p2_poly2vec_transformer`, the variables include:
+```python
+output_folder = '/rhome/msaee007/bigdata/pointnet_data/synthetic_data/main_exp_outputs'
+input_folder='/rhome/msaee007/bigdata/pointnet_data/weather_data/monthly_labeled/'
+model_param_path = '/rhome/msaee007/bigdata/pointnet_data/synthetic_data/main_exp_outputs/poly2vec_cluster__0.916178.ckpt'
+model_param_path = '/rhome/msaee007/bigdata/pointnet_data/synthetic_data/main_exp_outputs/poly2vec_cluster2__0.521208.ckpt'
+results_folder = '/rhome/msaee007/PointNet/02_clustering/clustering_results'
+```
+
+
+To train and save the results for this approach use the following commands:
+
+```bash
+python p2_poly2vec_transformer.py
+python p2_poly2vec_transformer2.py
+python p2_poly2vec_transformer_results.py
+python p2_poly2vec_transformer_results2.py
+```
+
+Finally, the file `./02_clustering/results.agg` prodcues the evaluation scores. Make sure to update the paths appropriately, to match the output folder produced by the previous scripts, you can modify it to include the `poly2vec_transformer` by changing the paths. You can comment the line about the dbscan time at the end of the file.
 
 ## Selectivity Experiments
 
