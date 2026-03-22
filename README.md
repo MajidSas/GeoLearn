@@ -109,10 +109,55 @@ python p2_poly2vec_transformer_results2.py
 
 Finally, the file `./02_clustering/results.agg` prodcues the evaluation scores. Make sure to update the paths appropriately, to match the output folder produced by the previous scripts, you can modify it to include the `poly2vec_transformer` by changing the paths. You can comment the line about the dbscan time at the end of the file.
 
-## Selectivity Experiments
-
-
 ## Walkability Experiments
 
+For the first two models use the scripts in `./04_walkability/` and the run the following scripts after updating the paths correctly to the downloaded datasets folder:
+```bash
+python pointnet_exp.py
+python resnet_baseline.py
+```
+
+Similiarly, for the Poly2Vec model in the folder `poly2vec_transformer`:
+`python p4_poly2vec_transformer.py`
+
+The results reported in the paper are then prepared using the script `04_walkability/results_summary.py`.
+
+## Dataset Preparation
+
+The prepared datasets are shared in:
+
+https://drive.google.com/drive/folders/19L_QbU1noJ-i2LWfDvdrUQWP5-UgkBVM?usp=share_link
+
+
+For `data synthesis`, the data is generated using `./02_data_synthesis/generator_main.py` with example usage `python generator_main.py diagonal 3`. This script also requires the BEAST package (which requires Spark) to be available see https://bitbucket.org/bdlabucr/beast/src/master/ (this library is used to compute the box counts value).
+
+For `weather` data, the data is downloaded from `Global Historical Climatology Network daily` up to Sep 19, 2024. The data is then procecessed using BEAST and Python. Then, it is processed with this script:
+```scala
+val daily_weather = spark.read.option("header", true).csv("./weather_data/data/").withColumn("PARSED_DATE", to_date(col("DATE"),"yyyy-MM-dd"))
+
+daily_weather.printSchema
+
+daily_weather.createOrReplaceTempView("daily")
+
+val df = spark.sql("SELECT STATION, year(PARSED_DATE) AS YEAR, month(PARSED_DATE) AS MONTH, FIRST(LONGITUDE) AS LONGITUDE, FIRST(LATITUDE) AS LATITUDE, FIRST(ELEVATION) AS ELEVATION, AVG(TMAX) AS TEMP FROM daily WHERE TMAX < 700 AND TMAX > -700 GROUP BY STATION, YEAR, MONTH")
+df.repartition(1).write.partitionBy("YEAR", "MONTH").option("header",true).mode("overwrite").csv("./weather_data/monthly_partitions/")
+
+
+df.write.parquet("./weather_data/monthly_averages.parquet")
+
+val monthly_avg = spark.read.parquet("./weather_data/monthly_averages.parquet")
+monthly_avg.createOrReplaceTempView("monthly_avg")
+
+
+for (y <- 1899 to 2023) {
+    for (m <- 1 to 12) {
+        val df_ym = spark.sql(f"SELECT * FROM monthly_avg WHERE YEAR = $y%d AND MONTH = $m%d")
+        df.coalesce(1).write.mode("overwrite").csv(f"./weather_data/monthly_partitions/$y%d_$m%d.csv")
+    }
+}
+```
+For clustering, the data is then labled using `02_clustering/stdbscan_processor.py`, and for data synthesis it is labeled using `01_data_synth/label_weather_data.py`.
+
+For `walkability` data, first the road network graph is downloaded using OSMnX (https://osmnx.readthedocs.io/en/stable/) for the desired region e.g. California (by providing the boudnaries of the region as a filter). Then, we divide the region into a 5kmX5km squares using the MBR of the region. Then, for any box that intersects both road network points and POIs we extract those points and compute the walkability score using a Python script with geopandas.
 
 
