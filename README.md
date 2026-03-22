@@ -31,7 +31,7 @@ python resnet_train.exp weather
 python pointnet_train.py
 ```
 
-To produce the for these models, first modify the file `p1_pred_summary.py`, and modify these paths with you stored the datasets: `/rhome/msaee007/bigdata/pointnet_data/p1_real_data`, `/rhome/msaee007/bigdata/pointnet_data/synthetic_data_test` and `/rhome/msaee007/bigdata/pointnet_data/synthetic_data`.
+To produce the results for these models, first modify the file `p1_pred_summary.py`, and modify these paths with you stored the datasets: `/rhome/msaee007/bigdata/pointnet_data/p1_real_data`, `/rhome/msaee007/bigdata/pointnet_data/synthetic_data_test` and `/rhome/msaee007/bigdata/pointnet_data/synthetic_data`.
 
 Also, change the paths for where the trained models are stored: replace `/main_exp_outputs/all_values_parametrized_weather_0.212609.ckpt` with the path to the pointnet model trained with weather data, replace `/main_exp_outputs/all_values_parametrized_synth_0.014546.ckpt` with the path to the pointnet model trained with the synthetic data, replace `/main_exp_outputs/resnet_weather_0.259091.ckpt` with the path of the resnet model trained with the weather data, and finally the resent model with the synthetic data `/main_exp_outputs/resnet_synth_0.055634.ckpt`.
 
@@ -56,8 +56,7 @@ python p1_pred_summary.py
 
 Finally, in the folder `./01_data_synth`, modify the paths in the file `p1_tables.py` to whereever you stored the results produced by the `p1_pred_summary.py` files and the datasets. The last part of this file `p1_tables.py` produces the values for the validation loss per epoch. Change those paths to the standard output of the training scripts, if you saved them, or just comment these lines.
 
-This should produce all the results and tables shown in the paper.
-
+This should produce all the results and tables shown in the paper including: Table 3, Table 4, Table 5, Table 6, and Figures 6 and 7.
 
 ## Clustering Experiments
 
@@ -107,7 +106,7 @@ python p2_poly2vec_transformer_results.py
 python p2_poly2vec_transformer_results2.py
 ```
 
-Finally, the file `./02_clustering/results.agg` prodcues the evaluation scores. Make sure to update the paths appropriately, to match the output folder produced by the previous scripts, you can modify it to include the `poly2vec_transformer` by changing the paths. You can comment the line about the dbscan time at the end of the file.
+Finally, the file `./02_clustering/results_agg.py` prodcues the evaluation scores. Make sure to update the paths appropriately, to match the output folder produced by the previous scripts, you can modify it to include the `poly2vec_transformer` by changing the paths. You can comment the line about the dbscan time at the end of the file. This will generate the results reported in Table 7.
 
 ## Walkability Experiments
 
@@ -120,7 +119,7 @@ python resnet_baseline.py
 Similiarly, for the Poly2Vec model in the folder `poly2vec_transformer`:
 `python p4_poly2vec_transformer.py`
 
-The results reported in the paper are then prepared using the script `04_walkability/results_summary.py`.
+The results reported in the paper are then prepared using the script `04_walkability/results_summary.py`. This generates Table 8.
 
 ## Dataset Preparation
 
