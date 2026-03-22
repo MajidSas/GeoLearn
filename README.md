@@ -1,4 +1,5 @@
-Code for paper "Towards Learned Geospatial Data Analysis & Exploration".
+Code for paper "On the Applicability of Artificial Intelligence Models to Geospatial
+Data Analysis and Exploration".
 
 
 *Datasets:* https://drive.google.com/drive/folders/19L_QbU1noJ-i2LWfDvdrUQWP5-UgkBVM?usp=share_link
